@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Material Master | SAP IMS</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="fas fa-cubes"></i></div>
+      <div class="logo-text"><span class="logo-title">SAP IMS</span><span class="logo-sub">Inventory Management</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN MENU</div>
+      <a href="../index.html" class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+      <a href="materials.html" class="nav-item active"><i class="fas fa-box"></i><span>Material Master</span></a>
+      <a href="vendors.html" class="nav-item"><i class="fas fa-truck"></i><span>Vendor Master</span></a>
+      <a href="purchase-orders.html" class="nav-item"><i class="fas fa-file-invoice"></i><span>Purchase Orders</span></a>
+      <a href="goods-receipt.html" class="nav-item"><i class="fas fa-warehouse"></i><span>Goods Receipt</span></a>
+      <a href="stock.html" class="nav-item"><i class="fas fa-layer-group"></i><span>Stock Overview</span></a>
+      <a href="reports.html" class="nav-item"><i class="fas fa-chart-bar"></i><span>Reports</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">MD</div>
+        <div><div class="user-name">Madhurima Dutta</div><div class="user-role">SAP MM Consultant</div></div>
+      </div>
+    </div>
+  </aside>
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+        <div class="breadcrumb"><span>Home</span> / <span class="bc-active">Material Master</span></div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date" id="topbar-date"></div>
+        <div class="topbar-notif"><i class="fas fa-bell"></i><span class="notif-badge">3</span></div>
+        <div class="topbar-user">SAP Client 100</div>
+      </div>
+    </header>
+    <div class="page-content">
+      <div class="page-header">
+        <h1>Material Master (MM60)</h1>
+        <p>Manage all material records — SAP Transaction: MM01 / MM02 / MM60</p>
+      </div>
+      <div class="content-card">
+        <div class="card-toolbar">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="mat-search" placeholder="Search by material ID or name..." oninput="filterMaterials()"/>
+          </div>
+          <div class="action-btns">
+            <select id="type-filter" class="chart-filter" onchange="filterMaterials()">
+              <option value="">All Types</option>
+              <option value="ROH">ROH - Raw Material</option>
+              <option value="HALB">HALB - Semi-Finished</option>
+              <option value="FERT">FERT - Finished</option>
+            </select>
+            <button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-plus"></i> Add Material</button>
+          </div>
+        </div>
+        <table class="data-table" id="materials-table">
+          <thead>
+            <tr>
+              <th>Material ID</th><th>Description</th><th>Type</th><th>UOM</th>
+              <th>Base Price</th><th>Plant</th><th>Group</th><th>Stock</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="mat-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Add Modal -->
+  <div class="modal-overlay" id="mat-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Add New Material</h2>
+        <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Material ID</label><input id="f-id" placeholder="MAT-XXXX" readonly/></div>
+          <div class="form-group"><label>Material Name *</label><input id="f-name" placeholder="e.g. Steel Rods 10mm"/></div>
+        </div>
+        <div class="form-grid-3">
+          <div class="form-group"><label>Material Type *</label>
+            <select id="f-type">
+              <option value="ROH">ROH - Raw Material</option>
+              <option value="HALB">HALB - Semi-Finished</option>
+              <option value="FERT">FERT - Finished Good</option>
+            </select>
+          </div>
+          <div class="form-group"><label>UOM *</label>
+            <select id="f-uom"><option>KG</option><option>MTR</option><option>EA</option><option>SET</option><option>BAG</option><option>ROLL</option><option>CAN</option><option>SQM</option></select>
+          </div>
+          <div class="form-group"><label>Plant *</label>
+            <select id="f-plant"><option value="P001">P001 - Main Plant</option><option value="P002">P002 - Secondary Plant</option></select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Base Price (₹) *</label><input id="f-price" type="number" min="0" placeholder="0"/></div>
+          <div class="form-group"><label>Initial Stock</label><input id="f-stock" type="number" min="0" placeholder="0"/></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Reorder Point *</label><input id="f-reorder" type="number" min="0" placeholder="0"/></div>
+          <div class="form-group"><label>Material Group *</label><input id="f-group" placeholder="e.g. Metals, Electrical..."/></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveMaterial()"><i class="fas fa-save"></i> Save Material</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    let editingId = null;
+
+    function renderTable(data) {
+      const tbody = document.getElementById('mat-tbody');
+      tbody.innerHTML = data.map(m => {
+        const s = getStockStatus(m.stock, m.reorder);
+        return `<tr>
+          <td><strong>${m.id}</strong></td>
+          <td>${m.name}</td>
+          <td><span class="badge badge-info">${m.type}</span></td>
+          <td>${m.uom}</td>
+          <td>${formatCurrency(m.price)}</td>
+          <td>${m.plant}</td>
+          <td>${m.group}</td>
+          <td>
+            <div>${m.stock} ${m.uom}</div>
+            <span class="badge ${s.cls}" style="font-size:10px">${s.label}</span>
+          </td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="editMaterial('${m.id}')"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-danger btn-sm" onclick="deleteMaterial('${m.id}')"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function filterMaterials() {
+      const q = document.getElementById('mat-search').value.toLowerCase();
+      const t = document.getElementById('type-filter').value;
+      const filtered = SAPData.materials.filter(m =>
+        (m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q)) &&
+        (!t || m.type === t)
+      );
+      renderTable(filtered);
+    }
+
+    function openAddModal() {
+      editingId = null;
+      document.getElementById('modal-title').textContent = 'Add New Material';
+      ['f-id','f-name','f-price','f-stock','f-reorder','f-group'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      const newId = 'MAT-' + (1001 + SAPData.materials.length);
+      document.getElementById('f-id').value = newId;
+      document.getElementById('mat-modal').classList.add('show');
+    }
+
+    function editMaterial(id) {
+      const m = SAPData.materials.find(x => x.id === id);
+      if (!m) return;
+      editingId = id;
+      document.getElementById('modal-title').textContent = 'Edit Material';
+      document.getElementById('f-id').value = m.id;
+      document.getElementById('f-name').value = m.name;
+      document.getElementById('f-type').value = m.type;
+      document.getElementById('f-uom').value = m.uom;
+      document.getElementById('f-plant').value = m.plant;
+      document.getElementById('f-price').value = m.price;
+      document.getElementById('f-stock').value = m.stock;
+      document.getElementById('f-reorder').value = m.reorder;
+      document.getElementById('f-group').value = m.group;
+      document.getElementById('mat-modal').classList.add('show');
+    }
+
+    function closeModal() { document.getElementById('mat-modal').classList.remove('show'); }
+
+    function saveMaterial() {
+      const name = document.getElementById('f-name').value.trim();
+      const price = parseFloat(document.getElementById('f-price').value);
+      const reorder = parseInt(document.getElementById('f-reorder').value);
+      const group = document.getElementById('f-group').value.trim();
+      if (!name || !price || !reorder || !group) { showToast('Please fill all required fields', 'error'); return; }
+      const obj = {
+        id: document.getElementById('f-id').value,
+        name, type: document.getElementById('f-type').value,
+        uom: document.getElementById('f-uom').value,
+        plant: document.getElementById('f-plant').value,
+        price, stock: parseInt(document.getElementById('f-stock').value) || 0,
+        reorder, group
+      };
+      if (editingId) {
+        const idx = SAPData.materials.findIndex(x => x.id === editingId);
+        SAPData.materials[idx] = obj;
+        showToast('Material updated successfully!');
+      } else {
+        SAPData.materials.push(obj);
+        showToast('Material added successfully!');
+      }
+      saveData(); closeModal(); filterMaterials();
+    }
+
+    function deleteMaterial(id) {
+      if (!confirm('Delete this material?')) return;
+      const idx = SAPData.materials.findIndex(x => x.id === id);
+      SAPData.materials.splice(idx, 1);
+      saveData(); filterMaterials();
+      showToast('Material deleted.', 'error');
+    }
+
+    renderTable(SAPData.materials);
+  </script>
+</body>
+</html>

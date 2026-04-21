@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stock Overview | SAP IMS</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    .stock-bar-cell { min-width: 140px; }
+    .stock-val { font-size:13px; font-weight:600; margin-bottom:4px; }
+    .stock-adj { display:flex; align-items:center; gap:6px; }
+    .stock-adj input { width:70px; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:13px; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="fas fa-cubes"></i></div>
+      <div class="logo-text"><span class="logo-title">SAP IMS</span><span class="logo-sub">Inventory Management</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN MENU</div>
+      <a href="../index.html" class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+      <a href="materials.html" class="nav-item"><i class="fas fa-box"></i><span>Material Master</span></a>
+      <a href="vendors.html" class="nav-item"><i class="fas fa-truck"></i><span>Vendor Master</span></a>
+      <a href="purchase-orders.html" class="nav-item"><i class="fas fa-file-invoice"></i><span>Purchase Orders</span></a>
+      <a href="goods-receipt.html" class="nav-item"><i class="fas fa-warehouse"></i><span>Goods Receipt</span></a>
+      <a href="stock.html" class="nav-item active"><i class="fas fa-layer-group"></i><span>Stock Overview</span></a>
+      <a href="reports.html" class="nav-item"><i class="fas fa-chart-bar"></i><span>Reports</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">MD</div>
+        <div><div class="user-name">Madhurima Dutta</div><div class="user-role">SAP MM Consultant</div></div>
+      </div>
+    </div>
+  </aside>
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+        <div class="breadcrumb"><span>Home</span> / <span class="bc-active">Stock Overview</span></div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date" id="topbar-date"></div>
+        <div class="topbar-notif"><i class="fas fa-bell"></i><span class="notif-badge">3</span></div>
+        <div class="topbar-user">SAP Client 100</div>
+      </div>
+    </header>
+    <div class="page-content">
+      <div class="page-header">
+        <h1>Stock Overview (MMBE)</h1>
+        <p>View and manage current stock levels — SAP Transaction: MMBE / MB52</p>
+      </div>
+
+      <div class="stats-row" id="stock-stats"></div>
+
+      <div class="content-card">
+        <div class="card-toolbar">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="s-search" placeholder="Search material..." oninput="filterStock()"/>
+          </div>
+          <div class="action-btns">
+            <select id="s-plant-filter" class="chart-filter" onchange="filterStock()">
+              <option value="">All Plants</option>
+              <option value="P001">P001 - Main Plant</option>
+              <option value="P002">P002 - Secondary Plant</option>
+            </select>
+            <select id="s-status-filter" class="chart-filter" onchange="filterStock()">
+              <option value="">All Status</option>
+              <option value="low">Low Stock</option>
+              <option value="ok">OK Stock</option>
+            </select>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>Material ID</th><th>Description</th><th>Type</th><th>Plant</th><th>Stock Level</th><th>Reorder Pt</th><th>Stock Value</th><th>Status</th><th>Adjust</th></tr>
+          </thead>
+          <tbody id="s-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    function renderStockStats() {
+      const total = SAPData.materials.reduce((a, m) => a + m.stock, 0);
+      const totalVal = SAPData.materials.reduce((a, m) => a + (m.stock * m.price), 0);
+      const low = SAPData.materials.filter(m => m.stock < m.reorder).length;
+      const ok = SAPData.materials.length - low;
+      document.getElementById('stock-stats').innerHTML = `
+        <div class="stat-pill"><i class="fas fa-boxes" style="color:var(--sap-blue)"></i> Total Units: <strong>${total.toLocaleString()}</strong></div>
+        <div class="stat-pill"><i class="fas fa-rupee-sign" style="color:var(--sap-green)"></i> Stock Value: <strong>${formatCurrency(totalVal)}</strong></div>
+        <div class="stat-pill"><i class="fas fa-exclamation-triangle" style="color:var(--sap-orange)"></i> Low Stock: <strong>${low}</strong></div>
+        <div class="stat-pill"><i class="fas fa-check-circle" style="color:var(--sap-green)"></i> Adequate Stock: <strong>${ok}</strong></div>
+      `;
+    }
+
+    function renderStockTable(data) {
+      document.getElementById('s-tbody').innerHTML = data.map(m => {
+        const s = getStockStatus(m.stock, m.reorder);
+        const pct = Math.min(100, Math.round((m.stock / (m.reorder * 2)) * 100));
+        const barCls = pct < 40 ? 'red' : pct < 70 ? 'orange' : 'green';
+        const stockVal = m.stock * m.price;
+        return `<tr>
+          <td><strong>${m.id}</strong></td>
+          <td>${m.name}</td>
+          <td><span class="badge badge-info">${m.type}</span></td>
+          <td>${m.plant}</td>
+          <td class="stock-bar-cell">
+            <div class="stock-val">${m.stock.toLocaleString()} ${m.uom}</div>
+            <div class="progress-bar"><div class="progress-fill ${barCls}" style="width:${pct}%"></div></div>
+          </td>
+          <td>${m.reorder} ${m.uom}</td>
+          <td>${formatCurrency(stockVal)}</td>
+          <td><span class="badge ${s.cls}">${s.label}</span></td>
+          <td>
+            <div class="stock-adj">
+              <input type="number" id="adj-${m.id}" placeholder="Qty" min="1"/>
+              <button class="btn btn-success btn-sm" onclick="adjustStock('${m.id}', 1)" title="Add Stock"><i class="fas fa-plus"></i></button>
+              <button class="btn btn-danger btn-sm" onclick="adjustStock('${m.id}', -1)" title="Issue Stock"><i class="fas fa-minus"></i></button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function adjustStock(id, direction) {
+      const qty = parseInt(document.getElementById(`adj-${id}`).value);
+      if (!qty || qty <= 0) { showToast('Enter a valid quantity', 'error'); return; }
+      const mat = SAPData.materials.find(m => m.id === id);
+      if (!mat) return;
+      const change = direction * qty;
+      if (mat.stock + change < 0) { showToast('Cannot issue more than available stock', 'error'); return; }
+      mat.stock += change;
+      saveData(); filterStock(); renderStockStats();
+      showToast(`Stock ${direction > 0 ? 'added' : 'issued'}: ${qty} ${mat.uom} for ${mat.name}`);
+    }
+
+    function filterStock() {
+      const q = document.getElementById('s-search').value.toLowerCase();
+      const plant = document.getElementById('s-plant-filter').value;
+      const status = document.getElementById('s-status-filter').value;
+      renderStockTable(SAPData.materials.filter(m => {
+        const matchQ = m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q);
+        const matchP = !plant || m.plant === plant;
+        const isLow = m.stock < m.reorder;
+        const matchS = !status || (status === 'low' ? isLow : !isLow);
+        return matchQ && matchP && matchS;
+      }));
+    }
+
+    renderStockStats();
+    renderStockTable(SAPData.materials);
+  </script>
+</body>
+</html>

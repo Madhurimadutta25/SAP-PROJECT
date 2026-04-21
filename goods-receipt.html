@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Goods Receipt | SAP IMS</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="fas fa-cubes"></i></div>
+      <div class="logo-text"><span class="logo-title">SAP IMS</span><span class="logo-sub">Inventory Management</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN MENU</div>
+      <a href="../index.html" class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+      <a href="materials.html" class="nav-item"><i class="fas fa-box"></i><span>Material Master</span></a>
+      <a href="vendors.html" class="nav-item"><i class="fas fa-truck"></i><span>Vendor Master</span></a>
+      <a href="purchase-orders.html" class="nav-item"><i class="fas fa-file-invoice"></i><span>Purchase Orders</span></a>
+      <a href="goods-receipt.html" class="nav-item active"><i class="fas fa-warehouse"></i><span>Goods Receipt</span></a>
+      <a href="stock.html" class="nav-item"><i class="fas fa-layer-group"></i><span>Stock Overview</span></a>
+      <a href="reports.html" class="nav-item"><i class="fas fa-chart-bar"></i><span>Reports</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">MD</div>
+        <div><div class="user-name">Madhurima Dutta</div><div class="user-role">SAP MM Consultant</div></div>
+      </div>
+    </div>
+  </aside>
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+        <div class="breadcrumb"><span>Home</span> / <span class="bc-active">Goods Receipt</span></div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date" id="topbar-date"></div>
+        <div class="topbar-notif"><i class="fas fa-bell"></i><span class="notif-badge">3</span></div>
+        <div class="topbar-user">SAP Client 100</div>
+      </div>
+    </header>
+    <div class="page-content">
+      <div class="page-header">
+        <h1>Goods Receipt (MIGO)</h1>
+        <p>Post goods receipts against purchase orders — SAP Transaction: MIGO / MB01</p>
+      </div>
+
+      <!-- GR Creation Panel -->
+      <div class="content-card" style="border-left:4px solid var(--sap-green)">
+        <h3 style="margin-bottom:16px;font-size:15px"><i class="fas fa-plus-circle" style="color:var(--sap-green)"></i> Post New Goods Receipt</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Select Purchase Order *</label>
+            <select id="gr-po-select" onchange="loadPOItems()">
+              <option value="">-- Select Approved PO --</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Plant *</label>
+            <select id="gr-plant">
+              <option value="P001">P001 - Main Plant</option>
+              <option value="P002">P002 - Secondary Plant</option>
+            </select>
+          </div>
+        </div>
+        <div id="gr-items-preview" style="display:none">
+          <h4 style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">ITEMS TO RECEIVE</h4>
+          <table class="data-table" id="gr-preview-table">
+            <thead><tr><th>Material</th><th>PO Qty</th><th>UOM</th><th>Receive Qty</th></tr></thead>
+            <tbody id="gr-preview-tbody"></tbody>
+          </table>
+          <div style="margin-top:14px">
+            <button class="btn btn-success" onclick="postGR()"><i class="fas fa-check-double"></i> Post Goods Receipt</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GR List -->
+      <div class="content-card">
+        <div class="table-header">
+          <h3><i class="fas fa-list"></i> Goods Receipt History</h3>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>GR Number</th><th>PO Reference</th><th>Vendor</th><th>Date</th><th>Plant</th><th>Materials</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="gr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    function populatePODropdown() {
+      const sel = document.getElementById('gr-po-select');
+      const approvedPOs = SAPData.purchaseOrders.filter(p => p.status === 'Approved');
+      sel.innerHTML = '<option value="">-- Select Approved PO --</option>' +
+        approvedPOs.map(p => `<option value="${p.id}">${p.id} - ${p.vendorName}</option>`).join('');
+    }
+
+    function loadPOItems() {
+      const poId = document.getElementById('gr-po-select').value;
+      if (!poId) { document.getElementById('gr-items-preview').style.display = 'none'; return; }
+      const po = SAPData.purchaseOrders.find(p => p.id === poId);
+      if (!po) return;
+      const tbody = document.getElementById('gr-preview-tbody');
+      tbody.innerHTML = po.items.map((item, i) => {
+        const mat = SAPData.materials.find(m => m.id === item.mat);
+        const matName = mat ? mat.name : item.mat;
+        const uom = mat ? mat.uom : 'EA';
+        return `<tr>
+          <td><strong>${item.mat}</strong> — ${matName}</td>
+          <td>${item.qty}</td>
+          <td>${uom}</td>
+          <td><input type="number" id="gr-qty-${i}" value="${item.qty}" min="1" max="${item.qty}"
+            style="width:90px;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px"/></td>
+        </tr>`;
+      }).join('');
+      document.getElementById('gr-items-preview').style.display = 'block';
+    }
+
+    function postGR() {
+      const poId = document.getElementById('gr-po-select').value;
+      const plant = document.getElementById('gr-plant').value;
+      if (!poId) { showToast('Select a PO first', 'error'); return; }
+      const po = SAPData.purchaseOrders.find(p => p.id === poId);
+      const grItems = po.items.map((item, i) => {
+        const mat = SAPData.materials.find(m => m.id === item.mat);
+        const qty = parseInt(document.getElementById(`gr-qty-${i}`).value) || 0;
+        // Update stock
+        if (mat && qty > 0) mat.stock += qty;
+        return { mat: item.mat, matName: mat ? mat.name : item.mat, qty, uom: mat ? mat.uom : 'EA' };
+      });
+
+      const newGR = {
+        id: 'GR-2026-' + String(SAPData.goodsReceipts.length + 1).padStart(3, '0'),
+        po: poId, date: new Date().toISOString().split('T')[0],
+        vendor: po.vendorName, plant, items: grItems, status: 'Posted'
+      };
+      SAPData.goodsReceipts.push(newGR);
+      po.status = 'Closed';
+      saveData();
+      document.getElementById('gr-po-select').value = '';
+      document.getElementById('gr-items-preview').style.display = 'none';
+      populatePODropdown();
+      renderGRTable();
+      showToast(`Goods Receipt ${newGR.id} posted successfully! Stock updated.`);
+    }
+
+    function renderGRTable() {
+      document.getElementById('gr-tbody').innerHTML = [...SAPData.goodsReceipts].reverse().map(gr => `
+        <tr>
+          <td><strong>${gr.id}</strong></td>
+          <td>${gr.po}</td>
+          <td>${gr.vendor}</td>
+          <td>${formatDate(gr.date)}</td>
+          <td>${gr.plant}</td>
+          <td>${gr.items.map(i => `${i.matName} (${i.qty})`).join(', ')}</td>
+          <td>${getStatusBadge(gr.status)}</td>
+          <td>
+            ${gr.status === 'Pending' ? `<button class="btn btn-success btn-sm" onclick="postExisting('${gr.id}')"><i class="fas fa-check"></i> Post</button>` : '<span style="color:var(--sap-green);font-size:12px"><i class="fas fa-check-circle"></i> Complete</span>'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function postExisting(id) {
+      const gr = SAPData.goodsReceipts.find(g => g.id === id);
+      if (!gr) return;
+      gr.status = 'Posted';
+      gr.items.forEach(item => {
+        const mat = SAPData.materials.find(m => m.id === item.mat);
+        if (mat) mat.stock += item.qty;
+      });
+      saveData(); renderGRTable();
+      showToast(`Goods Receipt ${id} posted! Stock updated.`);
+    }
+
+    populatePODropdown();
+    renderGRTable();
+  </script>
+</body>
+</html>
